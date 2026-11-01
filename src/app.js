@@ -1,0 +1,21 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
+import authRoutes from './routes/authRoutes.js';
+import alumniRoutes from './routes/alumniRoutes.js';
+import { errorHandler, notFound } from './middleware/errors.js';
+
+const app = express();
+const allowedOrigins = (process.env.CLIENT_ORIGINS || 'http://localhost:5173').split(',').map(v => v.trim()).filter(Boolean);
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(cors({ origin(origin, callback) { if (!origin || allowedOrigins.includes(origin)) return callback(null, true); callback(new Error('Origin is not allowed by CORS')); }, methods: ['GET', 'POST', 'PATCH', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] }));
+app.use(express.json({ limit: '30kb' }));
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 150, standardHeaders: 'draft-7', legacyHeaders: false }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '1.0.0' }));
+app.use('/api/auth', authRoutes);
+app.use('/api/alumni', alumniRoutes);
+app.use(notFound);
+app.use(errorHandler);
+export default app;
